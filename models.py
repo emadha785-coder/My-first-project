@@ -21,8 +21,3 @@ class DBAuthor(Base):
     bio= Column(String)
 
     books = relationship("DBBook", back_populates="author")
-
-
-
-
-
