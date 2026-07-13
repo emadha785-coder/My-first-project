@@ -31,26 +31,56 @@ def get_connection():
         db.close()
 
 
+class AuthorBase(BaseModel):
+    name:str
+    bio:str
+
+class AuthorCreate(AuthorBase):
+    pass
+
+class AuthorResponse(AuthorBase):
+    id:int
+
+    class Config:
+        from_attributes = True
+
+
 class BookBase(BaseModel):
     title:str
-    author:str
     pages: int
     is_published: bool
+    author_id: int
 
 class BookCreate(BookBase):
     pass
 
 class BR(BookBase):
     id:int
+    author: AuthorResponse
     class Config():
         from_attributes = True
 
-@app.post("/books", response_model=BookCreate)
+
+# ➕ إضافة مؤلف جديد
+@app.post("/authors", response_model=AuthorResponse)
+def create_author(author: AuthorCreate, db: Session = Depends(get_connection)):
+    db_author = models.DBAuthor(name=author.name, bio=author.bio)
+    db.add(db_author)
+    db.commit()
+    db.refresh(db_author)
+    return db_author
+
+# 🔍 جلب كل المؤلفين
+@app.get("/authors", response_model=list[AuthorResponse])
+def get_authors(db: Session = Depends(get_connection)):
+    return db.query(models.DBAuthor).all()
+
+@app.post("/books", response_model=BR)
 def add_book(book:BookCreate ,db: Session = Depends(get_connection)):
     db_book=models.DBBook(title = book.title,
-                             author = book.author,
                              pages = book.pages,
-                              is_published = book.is_published )
+                              is_published = book.is_published,
+                          author_id = book.author_id)
     db.add(db_book)
     db.commit()
     db.refresh(db_book)
@@ -80,7 +110,7 @@ def updateBook(id:int, book:BookCreate, db: Session = Depends(get_connection)):
        element.title = book.title
        element.pages = book.pages
        element.is_published = book.is_published
-       element.author = book.author
+       element.author_id = book.author_id
 
        db.commit()
        db.refresh(element)
